@@ -14,10 +14,11 @@ const (
 
 type File struct {
 	Sha1          string      `json:"sha1"`
-	ModifyTime    uint        `json:"modifyTime"`
-	CreateTime    uint        `json:"createTime"`
+	ModifyTime    int64       `json:"modifyTime"`
+	CreateTime    int64       `json:"createTime"`
 	PrivacyStatus string      `json:"privacyStatus"`
 	Name          string      `json:"name"`
+	Size          int64       `json:"size"`
 	Id            string      `json:"id"`
 	Type          string      `json:"type"`
 	Revision      string      `json:"revision"`

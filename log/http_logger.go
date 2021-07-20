@@ -3,9 +3,7 @@ package log
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
-	"xiaomi_cloud/utils"
 )
 
 // GetHttpTransport 在默认http client基础上增加日志功能
@@ -25,12 +23,11 @@ func (c *loggedRoundTripper) RoundTrip(request *http.Request) (*http.Response, e
 	duration := time.Since(startTime)
 	duration /= time.Millisecond
 	if err != nil {
-		Error(fmt.Sprintf("req_error method = %s duration = %d url = %s error = %s time = %s",
-			request.Method, duration, request.URL.String(), err.Error(), time.Now().Format(utils.YmdHis)))
+		Error(fmt.Sprintf("req_error method = %s duration = %d url = %s",
+			request.Method, duration, request.URL.String()))
 	} else {
-		Info(fmt.Sprintf("req_success method = %s status = %d duration = %d url = %s time = %s",
-			request.Method, response.StatusCode, duration, request.URL.String(), time.Now().Format(utils.YmdHis)))
+		Info(fmt.Sprintf("req_success method = %s status = %d duration = %d url = %s",
+			request.Method, response.StatusCode, duration, request.URL.String()))
 	}
-	fmt.Printf("%s\n", strings.Repeat("-", 50))
 	return response, err
 }

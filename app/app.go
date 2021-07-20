@@ -9,11 +9,9 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"time"
-	"xiaomi_cloud/api"
-	"xiaomi_cloud/theme"
+	"xiaomi_disk/api"
+	"xiaomi_disk/theme"
 )
-
-const previousSelect = "previous_select"
 
 type App struct {
 	Window fyne.Window
@@ -56,6 +54,7 @@ func (app *App) ShowWindow() {
 	if !app.User.IsLogin {
 		app.ShowLoginPop()
 	}
+	app.Window.CenterOnScreen()
 	app.Window.ShowAndRun()
 }
 
@@ -93,7 +92,7 @@ func (app *App) makeNav(setTree func(menu Menu, app *App)) fyne.CanvasObject {
 			return false
 		},
 		CreateNode: func(branch bool) fyne.CanvasObject {
-			return widget.NewLabel("Collection Widgets")
+			return widget.NewLabel("Menu Menu")
 		},
 		UpdateNode: func(uid string, branch bool, obj fyne.CanvasObject) {
 			t, ok := app.Menu[uid]

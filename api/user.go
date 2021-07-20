@@ -10,19 +10,16 @@ import (
 	"net/url"
 	"strings"
 	"time"
-	"xiaomi_cloud/log"
+	"xiaomi_disk/log"
 )
 
 const (
-	xiaomi          = "https://account.xiaomi.com"
-	securityHome    = xiaomi + "/pass2/security/home?userId=%s"
-	sendPhoneTicket = xiaomi + "/identity/auth/sendPhoneTicket?_dc=%d"
-	userLogin       = "https://i.mi.com/api/user/login?followUp=https%3A%2F%2Fi.mi.com%2Fdrive%2Fh5%23%2Fall&_locale=zh_CN&ts="
-	longPolling     = "https://c3.lp.account.xiaomi.com/longPolling/loginUrl" +
+	xiaomi       = "https://account.xiaomi.com"
+	securityHome = xiaomi + "/pass2/security/home?userId=%s"
+	userLogin    = "https://i.mi.com/api/user/login?followUp=https%3A%2F%2Fi.mi.com%2Fdrive%2Fh5%23%2Fall&_locale=zh_CN&ts="
+	longPolling  = "https://c3.lp.account.xiaomi.com/longPolling/loginUrl" +
 		"?sid=passport&callback=https%3A%2F%2Faccount.xiaomi.com&serviceParam=&qs=%253Fsid%253Dpassport&_qrsize=240&_="
 )
-
-var NoPhoneCodeError = errors.New("不需要手机验证码")
 
 type User struct {
 	HttpClient   *http.Client
@@ -118,8 +115,8 @@ func (r *User) LongPolling(lpUrl string) {
 	r.IsLogin = r.checkIfLoginIn()
 }
 
-// GetPhoneCode 获取手机安全验证码
-func (r *User) GetPhoneCode() error {
+// SecondLoginCheck 二次安全验证
+func (r *User) SecondLoginCheck() error {
 	resp, err := r.HttpClient.Get(userLogin + fmt.Sprintf("%d", time.Now().Unix()))
 	if err != nil {
 		return err
@@ -147,22 +144,8 @@ func (r *User) GetPhoneCode() error {
 	if err != nil {
 		return err
 	}
-	// 如果下一个跳转是云盘首页，则无需发验证码
-	nextLocation := resp.Header.Get("Location")
-	if nextLocation == "https://i.mi.com/drive/h5#/all" {
-		return NoPhoneCodeError
-	} else {
-		// 发送验证码
-		resp, err = r.HttpClient.Get(fmt.Sprintf(sendPhoneTicket, time.Now().Unix()))
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		all, err = ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%s\n", all)
+	if resp.Header.Get("Location") != "https://i.mi.com/drive/h5#/all" {
+		return errors.New("安全验证失败")
 	}
 	return nil
 }

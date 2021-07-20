@@ -4,59 +4,59 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/validation"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
-	"xiaomi_cloud/api"
+	"github.com/dustin/go-humanize"
+	"time"
+	"unicode/utf8"
+	"xiaomi_disk/api"
+	"xiaomi_disk/utils"
 )
 
 func disk(app *App) fyne.CanvasObject {
 	var diskNavs = []string{"全部文件"}
 	folders, err := app.Api.GetFoldersById("0")
 	if err != nil {
-		if err == api.UnauthorizedError { // 手机安全验证码
-			err = app.User.GetPhoneCode()
-			if err != nil {
-				if err == api.NoPhoneCodeError {
-					folders, err = app.Api.GetFoldersById("0")
-					if err != nil {
-						app.Alert(err.Error())
-					}
-					goto ShowList
-				}
-			} else {
-				code := widget.NewEntry()
-				code.Validator = validation.NewRegexp(`^[0-9]+$`, "Only Numbers")
-				codeItem := widget.NewFormItem("验证码", code)
-				codeItem.HintText = "请输入短信验证码"
-				items := []*widget.FormItem{
-					codeItem,
-				}
-				dialog.ShowForm("安全验证", "确定", "取消", items, func(b bool) {
-					fmt.Printf("%v\n", code.Text)
-				}, app.Window)
-			}
-		} else {
+		if err != api.UnauthorizedError {
 			app.Alert("获取目录列表失败")
+		} else {
+			err = app.User.SecondLoginCheck()
+			if err != nil {
+				app.Alert("二次安全验证失败")
+			}
+			folders, err = app.Api.GetFoldersById("0")
 		}
 	}
-
-ShowList:
-	navs := widget.NewLabel("全部文件")
-	list := widget.NewList(
-		func() int {
-			return len(folders)
-		},
+	navs := widget.NewLabelWithStyle("全部文件", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	list := widget.NewTable(
+		func() (int, int) { return len(folders), 4 },
 		func() fyne.CanvasObject {
 			return widget.NewLabel("")
 		},
-		func(i widget.ListItemID, o fyne.CanvasObject) {
-			data := folders[i]
-			o.(*widget.Label).SetText(data.Name)
+		func(id widget.TableCellID, cell fyne.CanvasObject) {
+			data := folders[id.Row]
+			modifyTime := time.Unix(data.ModifyTime/1000, data.ModifyTime%1000)
+			label := cell.(*widget.Label)
+			switch id.Col {
+			case 0:
+				label.SetText(fmt.Sprintf("%d", id.Row+1))
+			case 1:
+				if utf8.RuneCountInString(data.Name) >= 25 {
+					runes := []rune(data.Name)
+					label.SetText(string(runes[:25]) + "...")
+				} else {
+					label.SetText(data.Name)
+				}
+			case 2:
+				label.SetText(humanize.Bytes(uint64(data.Size)))
+			case 3:
+				label.SetText(modifyTime.Format(utils.YmdHis))
+			}
 		})
-
-	list.OnSelected = func(i widget.ListItemID) {
-		selected := folders[i]
+	list.SetColumnWidth(0, 30)
+	list.SetColumnWidth(1, 350)
+	list.SetColumnWidth(2, 80)
+	list.OnSelected = func(id widget.TableCellID) {
+		selected := folders[id.Row]
 		if selected.Type == api.TypeFolder {
 			diskNavs = append(diskNavs, selected.Name)
 			folders, err = app.Api.GetFoldersById(selected.Id)
@@ -65,9 +65,10 @@ ShowList:
 			}
 			navs.SetText(getDiskNavs(diskNavs))
 			list.Refresh()
+			list.Unselect(widget.TableCellID{})
 		}
 	}
-	return container.NewBorder(container.NewVBox(navs), nil, nil, nil, list)
+	return container.NewBorder(container.NewVBox(navs, widget.NewSeparator()), nil, nil, nil, list)
 }
 
 func getDiskNavs(navs []string) string {
